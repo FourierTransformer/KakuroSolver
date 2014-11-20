@@ -2,166 +2,227 @@ local CSP = require('TableSalt/TableSalt')
 local TableSalt = CSP.TableSalt
 local Pepper = CSP.Pepper
 
--- going to start with http://en.wikipedia.org/wiki/File:Kakuro_black_box.svg 
+-- moving on to the sample puzzles!
 
 local function allDiffSum(section, board, sum)
-    local maxLookup = {1, 3, 6, 10, 15, 21, 28, 36, 45}
-    local maxDomainLookup = { {2, 3, 4, 5, 6, 7, 8, 9}, {3, 4, 5, 6, 7, 8, 9}, {4, 5, 6, 7, 8, 9},
-        {5, 6, 7, 8, 9}, {6, 7, 8, 9}, {7, 8, 9}, {8, 9}, {9}, {}
-    }
-    local minLookup = {9, 17, 24, 30, 35, 39, 42, 44, 45}
-    local minDomainLookup = { {}, {1}, {1, 2}, {1, 2, 3}, {1, 2, 3, 4}, {1, 2, 3, 4, 5}, 
-        {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6, 7}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 3, 4, 5, 6, 7, 8, 9}
-    }
-    local reverseValuesToRemove = {}
-    local sum = sum
-    local emptyCells = #section
-    local lastID = math.huge
+    -- print(sum, #section)
+    -- import the bitwise and from luajit...
+    local band = bit.band
+    local count = 0
 
-    local valuesToRemove = {}
-    local newDomains = {}
-    local reverseValuesToRemove = {}
-
-    -- determine which values have been set
-    for i, v in ipairs(section) do
-        local currentValue = board:getValueByID(v)
-        if currentValue ~= nil then
-            if reverseValuesToRemove[currentValue] == true then
-                return {{}}
+    -- Magic code I found/modified that returns the values to remove
+    -- http://codegolf.stackexchange.com/questions/35562/kakuro-combinations
+    local result = {}
+    for mask = 1, 512 do
+        local cdigits = #section
+        local ctarget = sum
+        local bit = 1
+        local numbers = {}
+        for digit = 1, 9 do
+            if band(bit, mask) ~= 0 then
+                cdigits = cdigits - 1
+                ctarget = ctarget - digit;
             else
-                reverseValuesToRemove[currentValue] = true
-                table.insert(valuesToRemove, currentValue)
-                sum = sum - currentValue
-                emptyCells = emptyCells - 1
-                newDomains[i] = {currentValue}
+                numbers[#numbers + 1] = digit
             end
-        else
-            lastID = i
+            bit = bit + bit
+        end
+        if (ctarget==0 and cdigits == 0) then
+            for i = 1, #numbers do
+                result[numbers[i]] = true
+            end
+            count = count + 1
         end
     end
 
-    if emptyCells <= 0 then
-        if sum ~= 0 then
-            return {{}}
-        end
-    elseif emptyCells > 1 then
-        local lookup = sum - maxLookup[(emptyCells - 1)]
-        local removeIt = {}
-        if lookup < 9 then
-            removeIt = maxDomainLookup[lookup]
-        else
-            lookup = sum - minLookup[(emptyCells - 1)]
-            if lookup > 1 then
-                removeIt = minDomainLookup[lookup]
-            else
-                removeIt = minDomainLookup[1]
-            end
-        end
-        if removeIt ~= nil then
-            for i = 1, #removeIt do
-                table.insert(valuesToRemove, removeIt[i])
-            end
-        end
-    end
+    if count == 0 then return {{}} end
 
-    -- remove those values from the domain of the others
-    for ind, w in ipairs(section) do
-        local currentValue = board:getValueByID(w)
-        local currentDomain = board:getDomainByID(w)
-        if newDomains[ind] == nil then
-            local indicesToRemove = {}
-            for i, v in ipairs(currentDomain) do
-                for j, t in ipairs(valuesToRemove) do
-                    if v == t then
-                        indicesToRemove[ #indicesToRemove+1 ] = i
-                    end
+    -- figure out the new domains, by removing the values from the current domain
+    newDomains = {}
+    for ind = 1, #section do 
+        local currentDomain = board:getDomainByID(section[ind])
+        local domainSize = #currentDomain
+        if domainSize > 1 then
+
+            for i=1, domainSize do
+                if result[currentDomain[i]] then
+                    currentDomain[i] = nil
                 end
             end
-
-            for i = #indicesToRemove, 1, -1 do
-                table.remove(currentDomain, indicesToRemove[i])
+            local j = 0;
+            for i=1, domainSize do
+                if currentDomain[i] then
+                    j = j + 1
+                    currentDomain[j] = currentDomain[i]
+                end
             end
-            newDomains[ind] = currentDomain
+            for i = j+1, domainSize do
+                currentDomain[i] = nil
+            end
+
         end
+        newDomains[ind] = currentDomain
     end
 
+    -- return the new domains
     return newDomains
 
 end
 
-local kakuro = TableSalt:new({1, 2, 3, 4, 5, 6, 7, 8, 9}, 7, 7)
+function string:split(sep)
+    local sep, fields = sep or ":", {}
+    local pattern = string.format("([^%s]+)", sep)
+    self:gsub(pattern, function(c) fields[#fields+1] = c:gsub("%s+", "") end)
+    return fields
+end
 
--- something quick to get the id numbers...
--- print("Just the numbers")
--- for i = 1, 7 do
---     local row = ""
---     for j = 1, 7 do
---         row = row .. string.format("%2d", j+(i-1)*7) .. " "
---     end
---     print(row)
+function string:starts(starts)
+   return string.sub(self,1,string.len(starts))==starts
+end
+
+function string:ends(ends)
+   return string.sub(self,-string.len(ends))==ends
+end
+
+-- setup variables to keep track of stuffs
+local verticalAdd = {}
+local horizontalAdd = {}
+local zeros = {}
+
+-- read in line by line
+local lineNum = 0
+local fieldNum = 0
+for line in io.lines("Sample Puzzles/kakuro_wiki.txt") do
+
+    -- remove all spaces
+    line = line:gsub("%s+", "")
+    if line == "" then break end
+
+    -- increase line count
+    lineNum = lineNum + 1
+
+    -- create some arrays
+    verticalAdd[lineNum] = {}
+    horizontalAdd[lineNum] = {}
+    zeros[lineNum] = {}
+
+    -- split on the "|"
+    local fields = line:split("|")
+    fieldNum = #fields -- I needed the size. kinda gross but meh
+
+    -- go through each segment
+    for i = 1, #fields do
+
+        -- 0 means we need to fill it in!
+        if fields[i] == "0" then
+            zeros[lineNum][i] = "0"
+
+        -- "X\X" DON'T FILL IT IN! we got to go deeper!
+        elseif string.find(fields[i], "\\") then
+
+            if fields[i]:match("%d+\\%d+") then
+                zeros[lineNum][i] = "X"
+
+                -- BLANK SPACES
+                if fields[i] == "0\\0" then
+                    --lolz what shhhhhhh
+                
+                -- starts with "0\" adds horizontally.
+                elseif fields[i]:starts("0\\") then
+                    horizontalAdd[lineNum][i] = fields[i]:gsub("0\\", "")
+
+                -- ends with "\0" adds vertically
+                elseif fields[i]:ends("\\0") then
+                    verticalAdd[lineNum][i] = fields[i]:gsub("\\0", "")
+
+                -- adds horizontally and vertically (or error shhhhh)
+                else
+                    verticalAdd[lineNum][i] = fields[i]:gsub("\\%d+", "")
+                    horizontalAdd[lineNum][i] = fields[i]:gsub("%d+\\", "")
+
+
+                end
+
+            else
+                error("invalid puzzle")
+            end
+
+        else
+            error("Not valid puzzle")
+        end
+    end
+end
+
+local kakuro = TableSalt:new({1,2,3,4,5,6,7,8,9}, fieldNum, lineNum)
+print("lineNum", lineNum)
+print("fieldNum", fieldNum)
+
+-- print("Zeros")
+-- for i = 1, lineNum do
+--     print(table.concat(zeros[i], " "))
 -- end
--- print("\n")
 
--- HARD MODE HARD CODE.
--- Vertical constraints
-kakuro:addConstraintByIDs({1, 8, 15}, allDiffSum, 23)
-kakuro:addConstraintByIDs({36, 43}, allDiffSum, 11)
-kakuro:addConstraintByIDs({2, 9, 16, 23}, allDiffSum, 30)
-kakuro:addConstraintByIDs({37, 44}, allDiffSum, 10)
-kakuro:addConstraintByIDs({17, 24, 31, 38, 45}, allDiffSum, 15)
-kakuro:addConstraintByIDs({11, 18}, allDiffSum, 17)
-kakuro:addConstraintByIDs({32, 39}, allDiffSum, 7)
-kakuro:addConstraintByIDs({5, 12, 19, 26, 33}, allDiffSum, 27)
-kakuro:addConstraintByIDs({6, 13}, allDiffSum, 12) --THIS IS THE ONE!!!!!!!!!!!!!
-kakuro:addConstraintByIDs({27, 34, 41, 48}, allDiffSum, 12)
-kakuro:addConstraintByIDs({7, 14}, allDiffSum, 16)
-kakuro:addConstraintByIDs({35, 42, 49}, allDiffSum, 7)
+for j = 1, lineNum do
+    for i = 1, fieldNum do
+        local val = horizontalAdd[j][i]
+        local section = {}
+        if val ~= nil then
+            -- print(val)
+            local examineI = i + 1
+            while (zeros[j][examineI] == "0") do
+                section[#section+1] = {examineI, j}
+                -- print(examineI, j)
+                examineI = examineI + 1
+            end
+            kakuro:addConstraintByPairs(section, Pepper.allDiff, val)
+        end
+    end
+end
 
--- Horizontal constraints
-kakuro:addConstraintByIDs({1, 2}, allDiffSum, 16)
-kakuro:addConstraintByIDs({5, 6, 7}, allDiffSum, 24)
-kakuro:addConstraintByIDs({8, 9}, allDiffSum, 17)
-kakuro:addConstraintByIDs({11, 12, 13, 14}, allDiffSum, 29)
-kakuro:addConstraintByIDs({15, 16, 17, 18, 19}, allDiffSum, 35)
-kakuro:addConstraintByIDs({23, 24}, allDiffSum, 7)
-kakuro:addConstraintByIDs({26, 27}, allDiffSum, 8)
-kakuro:addConstraintByIDs({31, 32, 33, 34, 35}, allDiffSum, 16)
-kakuro:addConstraintByIDs({36, 37, 38, 39}, allDiffSum, 21)
-kakuro:addConstraintByIDs({41, 42}, allDiffSum, 5)
-kakuro:addConstraintByIDs({43, 44, 45}, allDiffSum, 6)
-kakuro:addConstraintByIDs({48, 49}, allDiffSum, 3)
+for j = 1, lineNum do
+    for i = 1, fieldNum do
+        local val = verticalAdd[j][i]
+        local section = {}
+        if val ~= nil then
+            -- print(val)
+            local examineJ = j + 1
+            while (zeros[examineJ][i] == "0") do
+                section[#section+1] = {i, examineJ}
+                examineJ = examineJ + 1
+                if examineJ > lineNum then
+                    break
+                end
+                -- print(i, examineJ)
+            end
+            -- print("Size", #section, "Val:", val)
+            kakuro:addConstraintByPairs(section, allDiffSum, val)
+        end
+    end
+end
+
+local section = {}
+for j = 1, fieldNum do
+    for i = 1, lineNum do
+        local val = zeros[i][j]
+        if val == "X" then
+            section[#section+1] = kakuro:getIDByPair(j, i)
+        end
+    end
+end
 
 
--- Blank spots?
-kakuro:addConstraintByIDs({3}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({4}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({10}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({20}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({21}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({22}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({25}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({28}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({29}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({30}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({40}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({46}, Pepper.setVal, "X")
-kakuro:addConstraintByIDs({47}, Pepper.setVal, "X")
+-- kakuro:addConstraintByPairs(section, Pepper.setVal, "X")
+kakuro:addConstraintByIDs(section, Pepper.setVal, "X")
 
-
--- kakuro:setAddVarsAfterAnyChange(false)
-local duration = os.clock()
+-- kakuro:solveConstraints()
 kakuro:solve()
-local time = (os.clock() - duration) * 1000
 kakuro:print()
-print("Solved in " .. time .. "ms")
-
-
--- -- Debug Output (for when testing single puzzles failing)
--- for j = 1, 7 do
---     for i = 1, 7 do
---         local cell = kakuro:getValueByPair(i, j)
---         if cell == nil then
---             print(kakuro:getIDByPair(i, j), table.concat(kakuro:getDomainByPair(i, j)))
---         end
---     end
--- end
+-- Debug Output (for when testing single puzzles failing)
+for j = 1, 8 do
+    for i = 1, 8 do
+        local cell = kakuro:getValueByPair(i, j)
+        if cell == nil then
+            print(kakuro:getIDByPair(i, j), table.concat(kakuro:getDomainByPair(i, j)))
+        end
+    end
+end
