@@ -12,6 +12,7 @@ install:
   - sudo apt-get install luajit
   - sudo apt-get install luarocks
   - sudo luarocks install tablesalt
+  - sudo luarocks install luabitop
   - sudo luarocks install luafilesystem
   - sudo luarocks install busted
 
