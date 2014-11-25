@@ -24,4 +24,4 @@ script: "busted -c spec"
 
 after_success:
   - coveralls --dump c.report.json
-  - luacov-coveralls -j c.report.json
+  - luacov-coveralls -j c.report.json -i allDiffSum.lua -i spec/*.lua
