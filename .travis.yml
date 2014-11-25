@@ -1,7 +1,8 @@
 language: erlang
 
 env:
-  - LUA=""
+  - LUA="lua5.1"
+  - LUA="lua5.2"
   - LUA="luajit"
 
 branches:
@@ -14,6 +15,13 @@ install:
   - sudo luarocks install tablesalt
   - sudo luarocks install luabitop
   - sudo luarocks install luafilesystem
+  - sudo luarocks install luacov
   - sudo luarocks install busted
+  - sudo pip install cpp-coveralls
+  - sudo luarocks install luacov-coveralls
 
-script: "busted spec"
+script: "busted -c spec"
+
+after_success:
+  - coveralls --dump c.report.json
+  - luacov-coveralls -j c.report.json
