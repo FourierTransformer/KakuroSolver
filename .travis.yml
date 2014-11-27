@@ -1,8 +1,6 @@
 language: erlang
 
 env:
-  global:
-    - LUAROCKS_BASE=luarocks-2.2.0
   matrix:
     - LUA=lua5.1 LUA_DEV=liblua5.1-dev LUA_VER=5.1
     - LUA=lua5.2 LUA_DEV=liblua5.2-dev LUA_VER=5.2
@@ -15,13 +13,7 @@ branches:
 before_install:
   - sudo apt-get install $LUA
   - sudo apt-get install $LUA_DEV
-  - wget http://luarocks.org/releases/$LUAROCKS_BASE.tar.gz
-  - tar zxvpf $LUAROCKS_BASE.tar.gz
-  - cd $LUAROCKS_BASE
-  - ./configure --lua-version=$LUA_VER --versioned-rocks-dir
-  - sudo make build
-  - sudo make install
-  - cd $TRAVIS_BUILD_DIR
+  - sudo apt-get install luarocks
 
 install:
   - sudo luarocks install tablesalt
