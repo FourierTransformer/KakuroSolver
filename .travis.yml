@@ -13,7 +13,7 @@ branches:
     - master
 
 before_install:
-  - sudo apt-get install $LUA_INSTALL
+  - sudo apt-get install $LUA
   - sudo apt-get install $LUA_DEV
   - $LUA -v
   - wget http://luarocks.org/releases/$LUAROCKS_BASE.tar.gz
