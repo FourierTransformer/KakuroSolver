@@ -4,9 +4,9 @@ env:
   global:
     - LUAROCKS_BASE=luarocks-2.2.0
   matrix:
-    - LUA=lua5.1 LUA_VER=5.1
-    - LUA=lua5.2 LUA_VER=5.2
-    - LUA=luajit LUA_VER=5.1
+    - LUA=lua5.1 LUA_DEV=liblua5.1-dev LUA_VER=5.1
+    - LUA=lua5.2 LUA_DEV=liblua5.2-dev LUA_VER=5.2
+    - LUA=luajit LUA_DEV=libluajit-5.1-dev LUA_VER=5.1
 
 branches:
   only:
@@ -14,7 +14,8 @@ branches:
 
 before_install:
   - sudo apt-get install $LUA
-  - lua -v
+  - sudo apt-get install $LUA_DEV
+  - $LUA -v
   - wget http://luarocks.org/releases/$LUAROCKS_BASE.tar.gz
   - tar zxvpf $LUAROCKS_BASE.tar.gz
   - cd $LUAROCKS_BASE
