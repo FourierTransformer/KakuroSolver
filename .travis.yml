@@ -13,11 +13,11 @@ branches:
     - master
 
 before_install:
-  - if [ $LUA = "luajit" ]; then
-      sudo apt-get install luajit
-    else
-      sudo apt-get install $LUA
-    fi
+  - if [ $LUA = "luajit-2.0.3" ]; then
+    sudo apt-get install luajit;
+  else
+    sudo apt-get install $LUA;
+  fi
   - sudo apt-get install $LUA_DEV
   - $LUA -v
   - wget http://luarocks.org/releases/$LUAROCKS_BASE.tar.gz
