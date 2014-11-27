@@ -26,15 +26,15 @@ before_install:
   - cd $TRAVIS_BUILD_DIR
 
 install:
-  - sudo -E luarocks install tablesalt
-  - sudo -E luarocks install luabitop
-  - sudo -E luarocks install luafilesystem
-  - sudo -E luarocks install luacov
-  - sudo -E luarocks install busted
-  - sudo -E pip install cpp-coveralls
-  - sudo -E luarocks install luacov-coveralls
+  - sudo luarocks install tablesalt
+  - sudo luarocks install luabitop
+  - sudo luarocks install luafilesystem
+  - sudo luarocks install luacov
+  - sudo luarocks install busted
+  - sudo pip install cpp-coveralls
+  - sudo luarocks install luacov-coveralls
 
-script: sudo -E busted -c -v spec
+script: busted -c -v spec
 
 after_success:
   - coveralls --dump c.report.json
