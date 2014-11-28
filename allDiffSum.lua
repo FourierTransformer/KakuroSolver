@@ -5,31 +5,29 @@ if not jit then
     bit = require('bit') 
 end
 
-function Constraint.allDiffSum(section, board, sum)
-    -- print("target", sum)
-    -- print("section size", #section)
+local band = bit.band
 
-    -- determine which values are mandatory
-    local mandatory = {}
-    for i = 1, #section do
-        local val = board:getValueByID(section[i])
-        if val then
-            -- print("VAL", val)
-            mandatory[val] = true
-        end
-    end
+local results = {}
+setmetatable(results, {__mode = "v"})  -- make values weak
 
-
-    -- CRAZY CODE
+local function KakuroCombinations(target, digits, mandatory)
+-- CRAZY CODE
     -- Thanks to edc65 over on stackexchange for this one!
     -- http://codegolf.stackexchange.com/questions/35562/kakuro-combinations
-    local band = bit.band
     local result = {}
     local count = 0
 
+    local crunch = {}
+    for i = 1, 9 do
+        crunch[i] = tostring(mandatory[i])
+    end
+    local key = table.concat(crunch) .. "-" .. target .. "-" .. digits
+
+    if results[key] then return results[key] end
+
     for mask = 512, 1, -1 do
-        local cdigits = #section
-        local ctarget = sum
+        local cdigits = digits
+        local ctarget = target
         local bit = 1
         local numbers = {}
         local failed = false
@@ -52,7 +50,7 @@ function Constraint.allDiffSum(section, board, sum)
     end
 
     -- error out RIGHT AWAY
-    if count == 0 then return {{}} end
+    if count == 0 then return false end
     -- print("Count", count)
     -- print(unpack(result))
 
@@ -65,6 +63,28 @@ function Constraint.allDiffSum(section, board, sum)
         end
     end
 
+    results[key] = result
+    return result
+end
+
+function Constraint.allDiffSum(section, board, sum)
+    -- print("target", sum)
+    -- print("section size", #section)
+
+    -- determine which values are mandatory
+    local mandatory = {}
+    for i = 1, #section do
+        local val = board:getValueByID(section[i])
+        if mandatory[val] then return {{}} end
+        if val then
+            -- print("VAL", val)
+            mandatory[val] = true
+        end
+    end
+
+    
+    local result = KakuroCombinations(sum, #section, mandatory)
+    if result == false then return {{}} end
 
     -- remove the values from the sections
     -- figure out the new domains, by removing the values from the current domain

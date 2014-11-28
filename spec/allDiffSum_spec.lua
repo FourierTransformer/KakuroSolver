@@ -4,9 +4,19 @@ local Pepper = CSP.Pepper
 
 local allDiffSum = require('allDiffSum').allDiffSum
 
-function KakuroCalc(target, digits, values)
-    local mandatory = {}
+local results = {}
+setmetatable(results, {__mode = "v"})  -- make values weak
 
+function KakuroCalc(target, digits, values)
+    local key
+    if values then
+        key = table.concat(values) .. "-" .. digits .. "-" .. target
+    else
+        key = "-" .. digits .. "-" .. target
+    end
+    if results[key] then return results[key] end
+
+    local mandatory = {}
     if values then
     for i = 1, #values do
         local val = values[i]
@@ -45,6 +55,8 @@ function KakuroCalc(target, digits, values)
             -- print(table.concat(numbers))
         end
     end
+
+    results[key] = result
 
     return result
 
@@ -125,6 +137,11 @@ context("various configurations", function()
     end)
 
     it("should equal 19", function()
+        local expected = {{9,8,2}, {9,7,3}, {9,6,4}, {8,7,4}, {8,6,5}}
+        assert.are.same(expected, KakuroCalc(19, 3))
+    end)
+
+    it("should equal 19 (memoized)", function()
         local expected = {{9,8,2}, {9,7,3}, {9,6,4}, {8,7,4}, {8,6,5}}
         assert.are.same(expected, KakuroCalc(19, 3))
     end)
