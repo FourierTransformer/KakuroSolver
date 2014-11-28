@@ -29,7 +29,9 @@ before_install:
 
 install:
   - sudo luarocks install tablesalt
-  - sudo luarocks install luabitop
+  - if [ $LUA != "luajit" ]; then
+      sudo luarocks install luabitop;
+    fi
   - sudo luarocks install luafilesystem
   - sudo luarocks install luacov
   - sudo luarocks install busted
